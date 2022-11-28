@@ -1784,6 +1784,18 @@ def L2functional_vf(dim, physical=False, updatable=False):
     V.add(f * u * dx)
     return V
 
+
+def linelast_vf(dim): ###??? generate assemblers
+    Mu = 0.5
+    Lam= 0.3
+    V = VForm(dim)
+    u, v = V.basisfuns(components=(dim,dim)) # vector valued
+    e_u = 1/2 * (grad(u) + grad(u).T)
+    e_v =  1/2 * (grad(v) + grad(v).T)
+    V.add((2* Mu *inner(e_u, e_v) + Lam * div(u) * div(v)) * dx) 
+    return V
+
+
 ################################################################################
 # parse strings to VForms
 ################################################################################

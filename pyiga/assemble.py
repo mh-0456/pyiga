@@ -1195,9 +1195,10 @@ class Multipatch:
             :meth:`join_boundaries` as often as needed, followed by
             :meth:`finalize`.
     """
-    def __init__(self, patches, automatch=False):
+    def __init__(self, patches, b_data=[], automatch=False):
         """Initialize a multipatch structure."""
         self.patches = patches
+        self.b_data = b_data
         # number of tensor product dofs per patch
         self.N = [bspline.numdofs(kvs) for (kvs,_) in self.patches]
         # offset to the dofs of the i-th patch
@@ -1349,6 +1350,8 @@ class Multipatch:
         n = self.numdofs
         A = scipy.sparse.csr_matrix((n, n)).asformat(format)
         b = np.zeros(n)
+        N = np.zeros(n)
+
         if args is None:
             args = dict()
         for p in range(self.numpatches):
@@ -1359,12 +1362,35 @@ class Multipatch:
             A_p = assemble(problem, kvs, args=args, bfuns=bfuns,
                     symmetric=symmetric, format=format, layout=layout,
                     **kwargs)
+
             A += X @ A_p @ X.T
             b_p = assemble(rhs, kvs, args=args, bfuns=bfuns,
                     symmetric=symmetric, format=format, layout=layout,
                     **kwargs).ravel()
             b += X @ b_p
-        return A, b
+
+        if 'N' in self.b_data:
+            #print('in N-')
+            for (p, bdspec, g_N) in self.b_data['N']:
+                kvs, geo = self.patches[p]
+                bdofs = boundary_dofs(kvs, bdspec, ravel=True)
+                # print(bdofs)
+                args.update(g_N=g_N)
+                args.update(geo=geo)
+
+                N_e = assemble('g_N * v * ds', kvs, args=args, bfuns=bfuns,
+                               symmetric=symmetric, format=format, layout=layout,
+                               **kwargs, boundary=bdspec).ravel()
+                #print(X)
+                #print('End')
+                #print(X[:, bdofs])
+
+                #for i in range(len(bdofs)):
+                #    N[bdofs[i]] = N_e[i]  # y-coord
+
+                N += X[:, bdofs] @ N_e
+
+        return A, b, N
 
     def compute_dirichlet_bcs(self, bdconds):
         """Performs the same operation as the global function
@@ -1377,6 +1403,7 @@ class Multipatch:
             A pair `(indices, values)` suitable for passing to
             :class:`RestrictedLinearSystem`.
         """
+
         bcs = []
         p2g = dict()        # cache the patch-to-global indices for efficiency
         for (p, bdspec, g) in bdconds:

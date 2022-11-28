@@ -17,6 +17,8 @@ def generate(dim):
     gen(vform.divdiv_vf(dim), 'DivDivAssembler'+nD)
     gen(vform.L2functional_vf(dim), 'L2FunctionalAssembler'+nD)
     gen(vform.L2functional_vf(dim, physical=True), 'L2FunctionalAssemblerPhys'+nD)
+    gen(vform.linelast_vf(dim), 'LinelastAssembler'+nD) ####???
+     :
 
     return code.result()
 
