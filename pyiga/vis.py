@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.collections import LineCollection
 
 from . import utils
+
 
 def plot_field(field, geo=None, res=80, physical=False, **kwargs):
     """Plot a scalar field, optionally over a geometry."""
@@ -12,16 +14,18 @@ def plot_field(field, geo=None, res=80, physical=False, **kwargs):
     if np.isscalar(res):
         res = (res, res)
     if geo is not None:
-        grd = tuple(np.linspace(s[0], s[1], r) for (s,r) in zip(geo.support, res))
+        grd = tuple(np.linspace(s[0], s[1], r) for (s, r) in zip(geo.support, res))
         XY = utils.grid_eval(geo, grd)
+        # print(XY)
         if physical:
+            print(physical)
             C = utils.grid_eval_transformed(field, grd, geo)
         else:
             C = utils.grid_eval(field, grd)
-        return plt.pcolormesh(XY[...,0], XY[...,1], C, **kwargs)
+        return plt.pcolormesh(XY[..., 0], XY[..., 1], C, **kwargs)
     else:
         # assumes that `field` is a BSplineFunc or equivalent
-        grd = tuple(np.linspace(s[0], s[1], r) for (s,r) in zip(field.support, res))
+        grd = tuple(np.linspace(s[0], s[1], r) for (s, r) in zip(field.support, res))
         C = utils.grid_eval(field, grd)
         return plt.pcolormesh(grd[1], grd[0], C, **kwargs)
 
@@ -48,20 +52,20 @@ def plot_geo(geo,
     meshy = np.linspace(supp[1][0], supp[1][1], res)
 
     def plotline(pts, capstyle='butt'):
-        plt.plot(pts[:,0], pts[:,1], color=color, linewidth=linewidth,
-                solid_joinstyle='round', solid_capstyle=capstyle)
+        plt.plot(pts[:, 0], pts[:, 1], color=color, linewidth=linewidth,
+                 solid_joinstyle='round', solid_capstyle=capstyle)
 
     pts = utils.grid_eval(geo, (gridx, meshy))
-    plotline(pts[0,:,:], capstyle='round')
-    for i in range(1, pts.shape[0]-1):
-        plotline(pts[i,:,:])
-    plotline(pts[-1,:,:], capstyle='round')
+    plotline(pts[0, :, :], capstyle='round')
+    for i in range(1, pts.shape[0] - 1):
+        plotline(pts[i, :, :])
+    plotline(pts[-1, :, :], capstyle='round')
 
     pts = utils.grid_eval(geo, (meshx, gridy))
-    plotline(pts[:,0,:], capstyle='round')
-    for j in range(1, pts.shape[1]-1):
-        plotline(pts[:,j,:])
-    plotline(pts[:,-1,:], capstyle='round')
+    plotline(pts[:, 0, :], capstyle='round')
+    for j in range(1, pts.shape[1] - 1):
+        plotline(pts[:, j, :])
+    plotline(pts[:, -1, :], capstyle='round')
 
 
 def plot_curve(geo, res=50, linewidth=None, color='black'):
@@ -70,10 +74,10 @@ def plot_curve(geo, res=50, linewidth=None, color='black'):
     supp = geo.support
     mesh = np.linspace(supp[0][0], supp[0][1], res)
     pts = utils.grid_eval(geo, (mesh,))
-    plt.plot(pts[:,0], pts[:,1], color=color, linewidth=linewidth)
+    plt.plot(pts[:, 0], pts[:, 1], color=color, linewidth=linewidth)
 
 
-def animate_field(fields, geo, vrange=None, res=(50,50), cmap=None, interval=50, progress=False):
+def animate_field(fields, geo, vrange=None, res=(50, 50), cmap=None, interval=50, progress=False):
     """Animate a sequence of scalar fields over a geometry."""
     fields = list(fields)
     fig, ax = plt.subplots()
@@ -81,7 +85,7 @@ def animate_field(fields, geo, vrange=None, res=(50,50), cmap=None, interval=50,
 
     if np.isscalar(res):
         res = (res, res)
-    grd = tuple(np.linspace(s[0], s[1], r) for (s,r) in zip(geo.support, res))
+    grd = tuple(np.linspace(s[0], s[1], r) for (s, r) in zip(geo.support, res))
     XY = geo.grid_eval(grd)
     C = np.zeros(res)
 
@@ -90,12 +94,13 @@ def animate_field(fields, geo, vrange=None, res=(50,50), cmap=None, interval=50,
         C = utils.grid_eval(fields[0], grd)
         vrange = (C.min(), C.max())
 
-    quadmesh = plt.pcolormesh(XY[...,0], XY[...,1], C, shading='gouraud', cmap=cmap,
-                vmin=vrange[0], vmax=vrange[1], axes=ax)
+    quadmesh = plt.pcolormesh(XY[..., 0], XY[..., 1], C, shading='gouraud', cmap=cmap,
+                              vmin=vrange[0], vmax=vrange[1], axes=ax)
     fig.colorbar(quadmesh, ax=ax)
 
     tqdm = utils.progress_bar(progress)
     pbar = tqdm(total=len(fields))
+
     def anim_func(i):
         C = utils.grid_eval(fields[i], grd)
         quadmesh.set_array(C.ravel())
@@ -105,6 +110,7 @@ def animate_field(fields, geo, vrange=None, res=(50,50), cmap=None, interval=50,
 
     return animation.FuncAnimation(fig, anim_func, frames=len(fields), interval=interval)
 
+
 class HSpaceVis:
     def __init__(self, hspace):
         assert hspace.dim == 2, 'Only 2D visualization implemented'
@@ -112,8 +118,8 @@ class HSpaceVis:
 
     @staticmethod
     def vis_rect(r):
-        Y, X = r        # note: last axis = x
-        return matplotlib.patches.Rectangle((X[0], Y[0]), X[1]-X[0], Y[1]-Y[0])
+        Y, X = r  # note: last axis = x
+        return matplotlib.patches.Rectangle((X[0], Y[0]), X[1] - X[0], Y[1] - Y[0])
 
     def cell_to_rect(self, lv, c):
         return self.vis_rect(self.hspace.cell_extents(lv, c))
@@ -167,6 +173,7 @@ class HSpaceVis:
         r.set_linewidth(3)
         return r
 
+
 def plot_hierarchical_mesh(hspace, levels='all', levelwise=False, color_act='steelblue', color_deact='lavender'):
     """Visualize the mesh of a 2D hierarchical spline space.
 
@@ -184,10 +191,11 @@ def plot_hierarchical_mesh(hspace, levels='all', levelwise=False, color_act='ste
     else:
         levels = tuple(levels)
 
-    for j,lv in enumerate(levels):
+    for j, lv in enumerate(levels):
         if levelwise:
-            plt.subplot(1, len(levels), j+1)
+            plt.subplot(1, len(levels), j + 1)
         V.plot_level(lv, color_act=color_act, color_deact=color_deact if levelwise else None)
+
 
 def plot_hierarchical_cells(hspace, cells, color_act='steelblue', color_deact='white'):
     """Visualize cells of a 2D hierarchical spline space.
@@ -203,7 +211,40 @@ def plot_hierarchical_cells(hspace, cells, color_act='steelblue', color_deact='w
     for lv in range(hspace.numlevels):
         V.plot_level_cells(cells.get(lv, {}), lv, color_act=color_act, color_deact=color_deact)
 
+
 def plot_active_cells(hspace, values, cmap=None, edgecolor=None):
     """Plot the mesh of active cells with colors chosen according to the given
     `values`."""
     return HSpaceVis(hspace).plot_active_cells(values, cmap=cmap)
+
+
+#############################################################################
+
+def plot_grid(x, y, ax=None, **kwargs):
+    """Plot a grid over a geometry"""
+    ax = ax or plt.gca()
+    segs1 = np.stack((x, y), axis=2)
+    segs2 = segs1.transpose(1, 0, 2)
+    ax.add_collection(LineCollection(segs1, **kwargs))
+    ax.add_collection(LineCollection(segs2, **kwargs))
+    ax.autoscale()
+
+
+def plot_deformation(displ, ref, geo=None, ax=-1, **kwargs):
+    """Plot a deformation over a geometry"""
+    kwargs.setdefault('shading', 'gouraud')
+
+    if geo is not None:
+        xgrid = np.linspace(0, 1, ref)
+        xygrid = (xgrid, xgrid)
+        G = geo.grid_eval(xygrid)
+        plot_grid(G[..., 0], G[..., 1], ax=ax, color="lightgrey")
+        plot_grid(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], ax=ax, color="black")
+        plt.pcolormesh(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], displ[..., 1], cmap='summer', **kwargs)
+
+    else:
+        # assumes that `field` is a BSplineFunc or equivalent
+        grd = tuple(np.linspace(s[0], s[1], ref) for s in field.support)
+        C = utils.grid_eval(field, grd)
+        return plt.pcolormesh(grd[1], grd[0], C, **kwargs)
+
