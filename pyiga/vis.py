@@ -233,14 +233,16 @@ def plot_grid(x, y, ax=None, **kwargs):
 def plot_deformation(displ, ref, geo=None, ax=-1, **kwargs):
     """Plot a deformation over a geometry"""
     kwargs.setdefault('shading', 'gouraud')
-
-    if geo is not None:
+    shape_displ = np.shape(displ[ref-1][ref-1])[0]
+    if geo is not None and shape_displ == 2:
         xgrid = np.linspace(0, 1, ref)
         xygrid = (xgrid, xgrid)
         G = geo.grid_eval(xygrid)
         plot_grid(G[..., 0], G[..., 1], ax=ax, color="lightgrey")
         plot_grid(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], ax=ax, color="black")
-        plt.pcolormesh(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], displ[..., 1], cmap='summer', **kwargs)
+
+        l2 = np.sqrt(np.power(displ[..., 0], 2) + np.power(displ[..., 1], 2))
+        plt.pcolormesh(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], l2, cmap='summer', **kwargs)
 
     else:
         # assumes that `field` is a BSplineFunc or equivalent
