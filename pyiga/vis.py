@@ -242,7 +242,7 @@ def plot_deformation(displ, ref, geo=None, ax=-1, **kwargs):
         plot_grid(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], ax=ax, color="black")
 
         l2 = np.sqrt(np.power(displ[..., 0], 2) + np.power(displ[..., 1], 2))
-        plt.pcolormesh(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], l2**2, cmap='summer', **kwargs)
+        plt.pcolormesh(G[..., 0] + displ[..., 0], G[..., 1] + displ[..., 1], l2, cmap='summer', **kwargs)
 
     else:
         # assumes that `field` is a BSplineFunc or equivalent
