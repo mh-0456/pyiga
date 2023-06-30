@@ -354,10 +354,9 @@ def ass_Neumann(p, MP_block, neu_data):
     kvs_ux, geo_ux = MP_block.multi_patches[0].patches[p]  # kvs_uy, geo_uy
     for item in neu_data:
         if item[0] == p:
-            # N_en = assemble.assemble('inner(g,v)*ds', kvs_ux, bfuns=[('v',2)], geo=geo_ux, g=item[2], boundary=item[1], layout='packed')
+            #N_en = assemble.assemble('inner(g,v)*ds', kvs_ux, bfuns=[('v',2)], geo=geo_ux, g=item[2], boundary=item[1], layout='packed')
             # normal vector with loading
-            N_en = -item[3] * assemble.assemble('inner(n,v)*ds', kvs_ux, bfuns=[('v', 2)], geo=geo_ux, boundary=item[1],
-                                                layout='packed')
+            N_en = -item[3] * assemble.assemble('inner(n,v)*ds', kvs_ux, bfuns=[('v', 2)], geo=geo_ux, boundary=item[1], layout='packed')
             bdofs = assemble.boundary_dofs(kvs_ux, item[1], ravel=True)
     return N_en, bdofs
 
@@ -536,23 +535,14 @@ def ass_nonlinsystem_RN3d(u, MP_block, neu_data, AR):
 
 ###########################
 ### assemble Neumann bdc ####
-
 def ass_Neumann3d(p, MP_block, neu_data):
     kvs_ux, geo_ux = MP_block.multi_patches[0].patches[p]  # kvs_uy, geo_uy
     for item in neu_data:
         if item[0] == p:
            # with function gN
-           # N_e = item[3] * assemble.assemble('inner(g,v)*ds', kvs_ux, geo=geo_ux, g=item[2], bfuns=[('v', 3)],
-                                             # symmetric=True, boundary=item[1]).ravel()
-
+            #N_e = assemble.assemble('inner(g,v)*ds', kvs_ux, geo=geo_ux, g=item[2], bfuns=[('v', 3)],symmetric=True, boundary=item[1]).ravel()
             # normal vector with loading!
             N_e = -item[3] * assemble.assemble('inner(n,v)*ds', kvs_ux, bfuns=[('v',3)], geo=geo_ux, boundary=item[1]).ravel()
-            #nv= -item[3] * assemble.assemble('inner(n,v)*ds', kvs_ux, bfuns=[('v',3)], geo=geo_ux, boundary=item[1])
-            #nv= (nv.sum(axis=(0,1,2)))
-            #print('\n normal vector:',nv)
-            #nn= nv/np.linalg.norm(nv)
-            #print(' \n normed normal vector:',nn) #normed normal vector
-
             N_e = N_e.reshape(3, -1)  # 3dim, -1 remaining factor to get to the total number of elements
             bdofs = assemble.boundary_dofs(kvs_ux, item[1], ravel=True)
     return N_e, bdofs
@@ -572,7 +562,7 @@ def ass_Robin3d(MP_block, robin_data):
         for item in robin_data:
             if item[0] == p:
                 AR_u = item[3] * assemble.assemble('u * v *g*ds', kvs_ux, bfuns=[('u', 1), ('v', 1)], geo=geo_ux,
-                                                   g=item[2],  # Here, only scalar!
+                                                   g=item[2],  # Here only scalar!
                                                    format='csr', layout='blocked', boundary=item[1])
                 bdofs_R = assemble.boundary_dofs(kvs_ux, item[1], ravel=True)
                 for c in range(3):  # x and y
@@ -649,9 +639,9 @@ def ass_energy3d(u, MP_block, kvs_j, neu_data=None, robin_data=None):
         if neu_data != None:
             for item in neu_data:
                 if item[0] == p:
-                    # N_e = -item[3]*assemble.assemble('inner(n, dis) * aux * ds', kvs_j, bfuns=[('aux',1)], geo=geo_ux, boundary=item[1], dis=dis)
-                    N_e = item[3] * assemble.assemble('inner(g,dis) *v *ds', kvs_j, bfuns=[('v', 1)], geo=geo_ux,
-                                                      g=item[2], boundary=item[1], dis=dis)
+                    N_e = -item[3]*assemble.assemble('inner(n, dis) * aux * ds', kvs_j, bfuns=[('aux',1)], geo=geo_ux, boundary=item[1], dis=dis)
+                    #N_e = item[3] * assemble.assemble('inner(g,dis) *v *ds', kvs_j, bfuns=[('v', 1)], geo=geo_ux,
+                                                      #g=item[2], boundary=item[1], dis=dis)
                     # print('N_e=', N_e)
                     j_N += N_e.sum()
 
