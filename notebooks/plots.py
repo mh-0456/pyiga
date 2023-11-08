@@ -44,10 +44,7 @@ def get_defplot(u, patches_u, kvs_u, MP_u, n_el):
     # grid variables
     x_el = n_el[0]
     y_el = n_el[1]
-    #
-    #x_el = n_el[1]
-    #y_el = n_el[0]
-    
+
     
     xgrid=np.linspace(0, 1, x_el)
     ygrid=np.linspace(0, 1, y_el)
@@ -126,16 +123,14 @@ def get_defplotPP(u, patches_u, kvs_u, MP_u, n_el, r_in, r_out):
         print('displacement_outer= {}'.format(dis[i, y_el-1,...]))
         print( 'dis_inner_x/dis_outer_x: ', dis1[i, 0]/dis1[i,y_el-1])
         print( 'dis_inner_y/dis_outer_y: ', dis2[i, 0]/dis2[i, y_el-1])
-        
-        #print (' ratio:', radius_inner/radius_outer) # with respect to max. inner radius coord.
-        
+
         print (' ratio_inner:', radius_inner/r_in) # with respect to inner radius
         print (' ratio_outer:', radius_outer/r_out) # with respect to outer radius
         
+        #deformed
         plt.plot(G[i, 0, 0] + dis1[i, 0], G[i, 0, 1] + dis2[i, 0], 'ro') # inner radius
         plt.plot(G[i, y_el-1, 0] + dis1[i, y_el-1], G[i, y_el-1, 1] + dis2[i, y_el-1], 'bo') # outer radius
-        #print(G[ y_el-1, 0, 0] , G[ y_el-1, 0, 1]) # (x, y) patch orientation!
-        #plt.plot(G[y_el-1, y_el-1, 0], G[y_el-1, y_el-1, 1] , 'co') # outer radius
+        # undeformed
         plt.plot(G[0, y_el-1, 0], G[0, y_el-1, 1] , 'co') # outer radius
         plt.plot(G[0, 0, 0], G[0, 0, 1] , 'mo') # inner radius
 
@@ -155,8 +150,98 @@ def get_defplotPP(u, patches_u, kvs_u, MP_u, n_el, r_in, r_out):
         #vis.plot_deformation(dis, ref, geo, ax, vmin=0.0, vmax=1.5e-3)
     plt.colorbar();
     plt.axis('equal')
+##################################################################
 
+#############################################################
+# for scalar-valued input vector
+def get_defplot_scalar(u, patches_u, kvs_u, MP_u, n_el, geos):
+    ## use refined knot vectors
+    #patches_ref = [(kvs_ref, g) for g in geos]
+    #MP_ref = assemble.Multipatch(patches_ref, automatch=True)
     
+    """Split solution vector into displacement components."""
+    u_funcs = [geometry.BSplineFunc(kvs_u, MP_u.global_to_patch(p) @ u)
+               for p in range(len(patches_u))]
+    
+    # evaluate displacement (and "pressure") over a grid in the parameter domain
+    # grid variables
+    x_el = n_el[0]
+    y_el = n_el[1]
+    
+    xgrid=np.linspace(0, 1, x_el)
+    ygrid=np.linspace(0, 1, y_el)
+    xygrid = (xgrid, ygrid)
+    vrange= None
+
+    fig, ax = plt.subplots(figsize= (10,10))
+    
+    # visualization per patch
+    for (u_func,(kvs, geo)) in zip(u_funcs, patches_u): #u_funcs 
+        dis = u_func.grid_eval(xygrid) #x-value
+        G = geo.grid_eval(xygrid)
+        C  = dis
+        if vrange is None:
+            vrange = (C.min(), C.max())
+            
+
+        plt.pcolormesh(G[..., 0], G[..., 1], C, shading='gouraud', cmap='viridis', 
+                                    vmin=vrange[0], vmax=vrange[1])
+    plt.colorbar();
+    plt.axis('equal')
+    
+    
+###########################################################################
+# evaluate for both, cauchy and local volume
+def get_defplot_evalp(cs, vol, patches_u, kvs_u, MP_u, n_el):
+
+    """Split solution vector into displacement components."""
+    cs_funcs = [geometry.BSplineFunc(kvs_u, MP_u.global_to_patch(p) @ cs)
+               for p in range(len(patches_u))]
+    
+    v_funcs = [geometry.BSplineFunc(kvs_u, MP_u.global_to_patch(p) @ vol)
+               for p in range(len(patches_u))]
+    
+    # evaluate displacement (and "pressure") over a grid in the parameter domain
+    # grid variables
+    x_el = n_el[0]
+    y_el = n_el[1]
+    
+    xgrid=np.linspace(0, 1, x_el)
+    ygrid=np.linspace(0, 1, y_el)
+    xygrid = (xgrid, ygrid)
+    vrange= None
+    count =0
+
+    fig, ax = plt.subplots(figsize= (10,10))
+    
+    # visualization per patch
+    for (cs_func, v_func,(kvs, geo)) in zip(cs_funcs, v_funcs, patches_u): #u_funcs 
+        stress = cs_func.grid_eval(xygrid) #x-value # cauchy-stress
+        #print(shape(stress))
+        volume = v_func.grid_eval(xygrid) # volume
+        G = geo.grid_eval(xygrid)
+        # evaluate
+        if count==0 or count ==2:
+            plt.plot(G[0, y_el-1, 0], G[0, y_el-1, 1] , 'co') # outer radius
+            plt.plot(G[0, 0, 0], G[0, 0, 1] , 'mo') # inner radius
+            print('\n patch:', count)
+            print('cauchystress_inner= {}'.format(stress[0, 0]))
+            print('cauchystress_outer= {}'.format(stress[0, y_el-1]))
+            print('volume_inner= {}'.format(volume[0, 0]))
+            print('volume_outer= {}'.format(volume[0, y_el-1]))
+
+        C  = stress
+        if vrange is None:
+            vrange = (C.min(), C.max())
+            
+        plt.pcolormesh(G[..., 0], G[..., 1], C, shading='gouraud', cmap='viridis', 
+                                    vmin=vrange[0], vmax=vrange[1])
+        count+=1
+        
+    plt.colorbar();
+    plt.axis('equal')
+
+
   ###################
 ## animation
 
@@ -173,8 +258,8 @@ def animate_field(fields, patches_u, kvs_u, MP_u, vrange=None, res=(50,50),cmap=
     fields = list(fields)
  
     fig, ax = plt.subplots(figsize= (8,8))
-    ax.set_xlim(left=-7.5, right=6)
-    ax.set_ylim(bottom=-7, top=7.5)
+    ax.set_xlim(left=-3.5, right=3)
+    ax.set_ylim(bottom=-3.2, top=3.5)
     ax.set_aspect('equal')
     
     
@@ -217,8 +302,8 @@ def animate_field(fields, patches_u, kvs_u, MP_u, vrange=None, res=(50,50),cmap=
     
     def anim_func(i):
         plt.cla()
-        ax.set_xlim(left=-7.5, right=6)
-        ax.set_ylim(bottom=-7, top=7.5)
+        ax.set_xlim(left=-3.5, right=3)
+        ax.set_ylim(bottom=-3.2, top=3.5)
         ax.set_aspect('equal')
         #factor = ar[i] # choose factor for deformation plot
         #u = LS.complete(fields[i])
@@ -261,8 +346,9 @@ def split_u(u, MP_u, kvs_u, patches_u):
            for p in range(len(patches_u))]
     return u1_funcs, u2_funcs
 
-
-####
+##########################################
+## 3D ###
+########################################
 ##Split solution vector into displacement components
 def split_u3d(u, MP_u, kvs_u, patches_u):
     """Split solution vector into displacement components."""
@@ -386,9 +472,8 @@ def plot_geo(geo, grid=10, gridx=None, gridy=None, gridz= None,
         #plt.show()
 
         
-        ###
         
-    
+################################################ 
 ### 3d surface
 import matplotlib as mpl
 from matplotlib.ticker import LinearLocator
@@ -509,8 +594,9 @@ def get_defplot3d(u, patches_u, kvs_u,  MP_u, n_el, grid=2, gridx=None, gridy=No
     plt.show()
     
 ####################
-#split the solution into its components (displacement in x- and y- direction)
-# visualization per patch , 2D only!
+#################################################################################
+
+# visualization per patch , 3D
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -623,3 +709,306 @@ def get_defplotC(u, patches_u, kvs_u, MP_u, grid=2, gridx=None, gridy=None, grid
     ax.set_zlabel("z")
     
     plt.show()
+    
+    ###################################
+def get_defplotpp3d_old(u, patches_u, kvs_u, MP_u, n_el =None, grid=2, gridx=None, gridy=None, gridz= None,
+         res=20, linewidth=None, **kwargs):
+
+    #u= LS.complete(u)
+    u1_funcs, u2_funcs, u3_funcs = split_u3d(u, MP_u, kvs_u, patches_u)   
+    fig, ax = plt.subplots(figsize= (10,10))
+    vrange = None
+    x_el = n_el[0]
+    y_el = n_el[1]
+    z_el = n_el[2]
+    count=0
+     # visualization per patch
+    for (u1_func, u2_func, u3_func, (kvs, geo)) in zip(u1_funcs, u2_funcs, u3_funcs, patches_u): #u_funcs 
+        print('\n patch:', count)
+
+        #res= x_el # or res=20 for better approximation
+        if gridz is None: gridz= 1
+        supp = geo.support
+
+        # if gridx/gridy is not an array, build an array with given number of ticks
+        if np.isscalar(gridz):
+            gridz = np.linspace(supp[2][1]/2, supp[2][1]/2, 1) # evaluate in the middle 
+            #gridz = np.linspace(supp[2][0], supp[2][1], 2)
+            print(supp[2])
+            print('grid z:', gridz)
+
+        meshx = np.linspace(supp[0][0], supp[0][1], res) # e.g. linespace(0, 1, 50)
+        meshy = np.linspace(supp[1][0], supp[1][1], res)
+
+        def plotlineC(pts, C, capstyle='butt'):
+            vrange = (C.min(), C.max())
+            #vrange = (0, 1.5e-5)
+            #print(shape(pts))
+
+            plt.pcolormesh(pts[..., 1], pts[..., 2], C, shading='gouraud', cmap='viridis', vmin=vrange[0], vmax=vrange[1])
+
+            plt.plot(pts[0,0, 1], pts[0,0, 2], 'ro') # inner radius
+            plt.plot(pts[0,res-1, 1], pts[0,res-1, 2], 'bo') # outer radius
+            radius_inner = np.sqrt( (pts[0,0, 1])**2 + (pts[0,0, 2])**2)
+            print('inner_radius: ', radius_inner)
+
+        zgridxy = (meshx, meshy, gridz)
+
+         # z-grid
+        dis1 = u1_func.grid_eval(zgridxy) #x-value evaluated on 3-dim grid
+        dis2 = u2_func.grid_eval(zgridxy) #y-value
+        dis3 = u3_func.grid_eval(zgridxy) #z-value
+        dis = np.stack((dis1,dis2, dis3), axis=-1) # displacement evaluated on 3-dim grid   
+        #print('dis=',shape(dis))
+        print('displacement_inner= {}'.format(dis[0, 0,...]))
+
+        dis23= np.stack((dis2[...,0], dis3[...,0]), axis=-1) # displacement(y,z) evaluated on 3-dim grid, reduced to 2d 
+
+        pts = grid_eval(geo, zgridxy) + dis # # + displacement z-coord
+        C = np.sqrt(np.power(dis[..., 1], 2) + np.power(dis[..., 2],2))
+
+        plotlineC(pts[:, :, 0],C[:, :, 0])
+        for k in range(1, pts.shape[2] - 1): 
+            plotlineC(pts[:, :, k], C[:, :, k])
+        plotlineC(pts[:, :, -1], C[:, :, -1])    
+
+        G= grid_eval(geo, zgridxy)
+        #print('G=',shape(G))
+        plt.plot(G[0,0,0, 1], G[0,0,0, 2], 'mo') # inner radius (undeformed)
+        plt.plot(G[0,res-1,0, 1], G[0,res-1,0, 2], 'go') # outer radius
+
+        ### need for data export!!
+        #print( 'dis_inner_y/dis_outer_y: ', dis2[0,0,0]/dis2[0,res-1,0])
+        print( 'dis_inner_y/dis_outer_y: ', dis23[0,0, 0]/dis23[0,res-1, 0])
+        print( 'dis_inner_z/dis_outer_z: ', dis3[0,0,0]/dis3[0,res-1,0])
+        #print( 'dis_inner_z/dis_outer_z: ', dis23[0,0, 1]/dis23[0,res-1, 1])
+
+        #radius_inner3 = np.sqrt( (G[0,0,0, 1] +dis23[0,0, 0])**2 + (G[0,0,0, 2]+dis23[0,0, 1])**2)
+        #print('inner_radius_3: ', radius_inner3)
+
+        count+=1
+
+    plt.colorbar();
+    plt.axis('equal')
+    ax.set_xlabel("y")
+    ax.set_ylabel("z")
+    plt.show()
+    
+    
+## ###################################
+def get_defplotpp3d(u, patches_u, kvs_u, MP_u, n_el, grid=2, gridx=None, gridy=None, gridz= None,
+         res=20, linewidth=None, **kwargs):
+
+    #u= LS.complete(u)
+    u1_funcs, u2_funcs, u3_funcs = split_u3d(u, MP_u, kvs_u, patches_u)   
+    fig, ax = plt.subplots(figsize= (10,10))
+    vrange = None
+    x_el = n_el[0]
+    y_el = n_el[1]
+    z_el = n_el[2]
+    count=0
+     # visualization per patch
+    for (u1_func, u2_func, u3_func, (kvs, geo)) in zip(u1_funcs, u2_funcs, u3_funcs, patches_u): #u_funcs 
+        print('\n patch:', count)
+
+        #res= x_el # or res=20 for better approximation
+        if gridz is None: gridz= 1
+        supp = geo.support
+
+        # if gridx/gridy is not an array, build an array with given number of ticks
+        if np.isscalar(gridz):
+            gridz = np.linspace(supp[2][1]/2, supp[2][1]/2, 1) # evaluate in the middle 
+            #gridz = np.linspace(supp[2][0], supp[2][1], 2)
+
+        meshx = np.linspace(supp[0][0], supp[0][1], res) # e.g. linespace(0, 1, 50)
+        meshy = np.linspace(supp[1][0], supp[1][1], res)
+
+        def plotlineC(pts, C, capstyle='butt'):
+            vrange = (C.min(), C.max())
+            #vrange = (0, 1.5e-5)
+
+            plt.pcolormesh(pts[..., 1], pts[..., 2], C, shading='gouraud', cmap='viridis', vmin=vrange[0], vmax=vrange[1])
+
+            plt.plot(pts[0,0, 1], pts[0,0, 2], 'ro') # inner radius
+            plt.plot(pts[0,res-1, 1], pts[0,res-1, 2], 'bo') # outer radius
+            radius_inner = np.sqrt( (pts[0,0, 1])**2 + (pts[0,0, 2])**2)
+            print('inner_radius: ', radius_inner)
+
+        zgridxy = (meshx, meshy, gridz)
+
+         # z-grid
+        dis1 = u1_func.grid_eval(zgridxy) #x-value evaluated on 3-dim grid
+        dis2 = u2_func.grid_eval(zgridxy) #y-value
+        dis3 = u3_func.grid_eval(zgridxy) #z-value
+        dis = np.stack((dis1,dis2, dis3), axis=-1) # displacement evaluated on 3-dim grid   
+        print('displacement_inner= {}'.format(dis[0, 0,...]))
+        print('displacement_outer= {}'.format(dis[0, res-1,...]))
+
+
+        pts = grid_eval(geo, zgridxy) + dis # # + displacement z-coord
+        C = np.sqrt(np.power(dis[..., 1], 2) + np.power(dis[..., 2],2))
+        print(np.shape(C))
+
+        plotlineC(pts[:, :, 0],C[:, :, 0])
+        for k in range(1, pts.shape[2] - 1): 
+            plotlineC(pts[:, :, k], C[:, :, k])
+        plotlineC(pts[:, :, -1], C[:, :, -1])    
+
+        G= grid_eval(geo, zgridxy)
+        #print('G=',shape(G))
+        plt.plot(G[0,0,0, 1], G[0,0,0, 2], 'mo') # inner radius (undeformed)
+        plt.plot(G[0,res-1,0, 1], G[0,res-1,0, 2], 'go') # outer radius
+        #plt.plot(G[0,0,0, 1] +dis2[0,0,0], G[0,0,0, 2]+dis3[0,0,0], 'mo') # inner radius
+        #plt.plot(G[0,res-1,0, 1]+dis2[0,0,0], G[0,res-1,0, 2]+dis3[0,0,0], 'go') # outer radius
+
+        ### need for data export!!
+        print( 'dis_inner_y/dis_outer_y: ', dis2[0,0,0]/dis2[0,res-1,0])
+        print( 'dis_inner_z/dis_outer_z: ', dis3[0,0,0]/dis3[0,res-1,0])
+
+        count+=1
+
+    plt.colorbar();
+    plt.axis('equal')
+    ax.set_xlabel("y")
+    ax.set_ylabel("z")
+    plt.show()
+    
+## ###################################
+# evaluate for both, cauchy and local volume
+
+
+def get_defplot_evalp3d(cs, vol, patches_u, kvs_u, MP_u, n_el, grid=2, gridx=None, gridy=None, gridz=None,
+         res=20, linewidth=None, **kwargs):
+    
+    cs_funcs = [geometry.BSplineFunc(kvs_u, MP_u.global_to_patch(p) @ cs)
+               for p in range(len(patches_u))]
+
+    v_funcs = [geometry.BSplineFunc(kvs_u, MP_u.global_to_patch(p) @ vol)
+               for p in range(len(patches_u))]
+    
+    fig, ax = plt.subplots(figsize= (10,10))
+    vrange = None
+    x_el = n_el[0]
+    y_el = n_el[1]
+    z_el = n_el[2]
+    count=0
+    
+     # visualization per patch
+    for (cs_func, v_func,(kvs, geo)) in zip(cs_funcs, v_funcs, patches_u):
+        print('\n patch:', count)
+
+        #res= x_el # or res=20 for better approximation
+        if gridz is None: gridz= 1
+        supp = geo.support
+
+        # if gridx/gridy is not an array, build an array with given number of ticks
+        if np.isscalar(gridz):
+            gridz = np.linspace(supp[2][1]/2, supp[2][1]/2, 1) # evaluate in the middle 
+            #gridz = np.linspace(supp[2][0], supp[2][1], 2)
+            print(supp[2])
+            print('grid z:', gridz)
+
+        meshx = np.linspace(supp[0][0], supp[0][1], res) # e.g. linespace(0, 1, 50)
+        meshy = np.linspace(supp[1][0], supp[1][1], res)
+
+        def plotlineC(pts, C, capstyle='butt'):
+            #vrange = (C.min(), C.max())
+            vrange = (0, 1.5e-5)
+            #print(shape(pts))
+
+            plt.pcolormesh(pts[..., 1], pts[..., 2], C, shading='gouraud', cmap='viridis', vmin=vrange[0], vmax=vrange[1])
+
+            plt.plot(pts[0,0, 1], pts[0,0, 2], 'ro') # inner radius
+            plt.plot(pts[0,res-1, 1], pts[0,res-1, 2], 'bo') # outer radius
+            #radius_inner = np.sqrt( (pts[0,0, 1])**2 + (pts[0,0, 2])**2)
+            #print('inner_radius: ', radius_inner)
+
+        zgridxy = (meshx, meshy, gridz)
+        # z-grid
+        stress = cs_func.grid_eval(zgridxy) #x-value # cauchy-stress
+        volume = v_func.grid_eval(zgridxy) # volume
+        G= grid_eval(geo, zgridxy)
+        
+        pts = grid_eval(geo, zgridxy) # z-coord
+        C  = stress
+        
+        plotlineC(pts[:, :, 0],C[:, :, 0])
+        for k in range(1, pts.shape[2] - 1): 
+            plotlineC(pts[:, :, k], C[:, :, k])
+        plotlineC(pts[:, :, -1], C[:, :, -1]) 
+        
+        # evaluate on z-grid
+        if count==0 or count ==2:
+            plt.plot(G[0,0,0, 1], G[0,0,0, 2], 'mo') # inner radius (undeformed)
+            plt.plot(G[0,res-1,0, 1], G[0,res-1,0, 2], 'go') # outer radius
+            
+            print('\n patch:', count)
+            print('cauchystress_inner= {}'.format(stress[0, 0,...]))
+            print('cauchystress_outer= {}'.format(stress[0, res-1,...]))
+            print('volume_inner= {}'.format(volume[0, 0,...]))
+            print('volume_outer= {}'.format(volume[0, res-1, ...]))
+            
+        count+=1
+
+    plt.colorbar();
+    plt.axis('equal')
+    ax.set_xlabel("y")
+    ax.set_ylabel("z")
+    plt.show()
+
+
+#############
+### for scalar-valued input vector
+def get_defplot_scalar3d(val, patches_u, kvs_u, MP_u, n_el, geos, arr, res=30):
+    val_funcs = [geometry.BSplineFunc(kvs_u, MP_u.global_to_patch(p) @ val)
+               for p in range(len(patches_u))]
+    
+    # evaluate displacement (and "pressure") over a grid in the parameter domain
+    # grid variables
+    x_el = n_el[0]
+    y_el = n_el[1]
+    z_el = n_el[2]
+    
+    vrange= None
+    fig, ax = plt.subplots(figsize= (10,10))
+    
+    # visualization per patch
+    for (val_func,(kvs, geo)) in zip(val_funcs, patches_u): #u_funcs 
+        gridz= 1
+        supp = geo.support
+        # if gridx/gridy is not an array, build an array with given number of ticks
+        if np.isscalar(gridz):
+            gridz = np.linspace(supp[2][1]/2, supp[2][1]/2, 1) # evaluate in the middle 
+
+        meshx = np.linspace(supp[0][0], supp[0][1], res) # e.g. linespace(0, 1, 50)
+        meshy = np.linspace(supp[1][0], supp[1][1], res)
+
+        def plotlineC(pts, C, capstyle='butt'):
+            #vrange = (C.min(), C.max())
+            vrange = (arr.min(), arr.max())
+            #vrange = (2e-4, 5.5e-4)
+
+            plt.pcolormesh(pts[..., 1], pts[..., 2], C, shading='gouraud', cmap='viridis', vmin=vrange[0],
+                           vmax=vrange[1])
+
+
+        zgridxy = (meshx, meshy, gridz)
+        # z-grid
+        vol = val_func.grid_eval(zgridxy) #x-value
+        G= grid_eval(geo, zgridxy)
+        C  = vol
+        pts = grid_eval(geo, zgridxy) # z-coord
+        
+        plotlineC(pts[:, :, 0],C[:, :, 0])
+        for k in range(1, pts.shape[2] - 1): 
+            plotlineC(pts[:, :, k], C[:, :, k])
+        plotlineC(pts[:, :, -1], C[:, :, -1]) 
+
+        
+    plt.colorbar();
+    plt.axis('equal')
+    ax.set_xlabel("y")
+    ax.set_ylabel("z")
+    plt.show()
+ 
+    
